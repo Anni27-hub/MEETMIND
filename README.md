@@ -1,4 +1,4 @@
-# MeetMind 🎙️
+# MeetMind 
 
  **Live Deployment**: [https://meetmind-qneltthz7vbc4wx3ug7qkl.streamlit.app](https://meetmind-qneltthz7vbc4wx3ug7qkl.streamlit.app)
 
