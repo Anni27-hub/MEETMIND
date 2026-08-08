@@ -1,4 +1,6 @@
-# MeetMind 
+# MeetMind 🎙️
+
+ **Live Deployment**: [https://meetmind-qneltthz7vbc4wx3ug7qkl.streamlit.app](https://meetmind-qneltthz7vbc4wx3ug7qkl.streamlit.app)
 
 MeetMind is a premium, high-speed **AI Meeting Intelligence Dashboard** designed to convert video and audio recordings into actionable corporate assets. Built with a sleek dark-themed interface, it allows users to process YouTube links or upload local audio/video files, generate high-accuracy transcripts, synthesize bulleted meeting summaries, extract decisions and tasks, and query the entire conversation context in real-time.
 
