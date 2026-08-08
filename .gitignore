@@ -1,0 +1,24 @@
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# API keys & configurations
+.env
+
+# Python bytecode / caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Local media downloads & database caches
+downloades/
+vector_db/
+
+# OS/IDE configs
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
