@@ -12,7 +12,10 @@ def get_embeddings():
     )
 
 def build_vector_store(transcript : str):
-    from langchain_chroma import Chroma
+    try:
+        from langchain_chroma import Chroma
+    except ImportError:
+        from langchain_community.vectorstores import Chroma
     from langchain_text_splitters import RecursiveCharacterTextSplitter
     from langchain_core.documents import Document
 
@@ -47,7 +50,10 @@ def build_vector_store(transcript : str):
 
 
 def load_vector_store():
-    from langchain_chroma import Chroma
+    try:
+        from langchain_chroma import Chroma
+    except ImportError:
+        from langchain_community.vectorstores import Chroma
     embeddings = get_embeddings()
     vector_store = Chroma(
         collection_name=COLLECTION_NAME,

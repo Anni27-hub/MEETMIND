@@ -8,6 +8,7 @@ pydub>=0.25.1                     # Audio file manipulation / format conversion
 ffmpeg-python>=0.2.0              # FFmpeg bindings (FFmpeg binary must be installed separately)
 
 # ── Speech-to-Text (local Whisper) ────────────────────────────────────────────
+openai-whisper>=20231117          # OpenAI Whisper model
 faster-whisper>=1.0.0             # Optimized Whisper (CTransformers backend, 4-6x faster)
 torch>=2.2.0                      # PyTorch (optional but recommended for faster-whisper GPU acceleration)
 
@@ -25,6 +26,7 @@ mistralai>=0.4.0                  # Official Mistral Python client
 
 # ── RAG Pipeline ──────────────────────────────────────────────────────────────
 chromadb>=0.5.0                   # Local vector store
+langchain-chroma>=0.1.0           # LangChain Chroma integration
 sentence-transformers>=3.0.0      # HuggingFace embedding models
 langchain-huggingface>=0.0.3       # LangChain ↔ HuggingFace embeddings bridge
 huggingface-hub>=0.23.0           # Model downloading from HuggingFace Hub
