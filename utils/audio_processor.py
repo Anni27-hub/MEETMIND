@@ -9,14 +9,20 @@ os.makedirs(DOWNLOAD_DIR,exist_ok = True)
 
 def download_youtube_audio(url: str) -> str:
     output_path = os.path.join(DOWNLOAD_DIR, "%(id)s.%(ext)s")
-    node_path = shutil.which("node") or r"C:\Program Files\nodejs\node.exe"
+    js_runtimes = {}
+    found_node = shutil.which("node")
+    if found_node:
+        js_runtimes["node"] = {"path": found_node}
+    elif os.path.exists(r"C:\Program Files\nodejs\node.exe"):
+        js_runtimes["node"] = {"path": r"C:\Program Files\nodejs\node.exe"}
+    elif shutil.which("deno"):
+        js_runtimes["deno"] = {"path": shutil.which("deno")}
 
     ydl_opts = {
         "format": "bestaudio[language*=en]/bestaudio[format_id*=en]/bestaudio/best",
         "outtmpl": output_path,
         "windowsfilenames": True,
         "restrictfilenames": True,
-        "js_runtimes": {"node": {"path": node_path}} if os.path.exists(node_path) else ["node"],
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -35,6 +41,8 @@ def download_youtube_audio(url: str) -> str:
             "Referer": "https://www.youtube.com/",
         },
     }
+    if js_runtimes:
+        ydl_opts["js_runtimes"] = js_runtimes
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
