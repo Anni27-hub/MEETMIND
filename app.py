@@ -898,8 +898,8 @@ else:
                     st.session_state["main_yt_input"] = "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
                     st.rerun()
             with d2:
-                if st.button("✦ Microsoft AI CEO Briefing", key="demo_satya", type="secondary", use_container_width=True):
-                    st.session_state["main_yt_input"] = "https://www.youtube.com/watch?v=Xn_jE_zJ6nU"
+                if st.button("✦ 1-Min Motivation Demo", key="demo_motivation", type="secondary", use_container_width=True):
+                    st.session_state["main_yt_input"] = "https://www.youtube.com/watch?v=ZU0f8_C5Pm0"
                     st.rerun()
             with d3:
                 if st.button("≡ OpenAI DevDay Keynote", key="demo_sam", type="secondary", use_container_width=True):
