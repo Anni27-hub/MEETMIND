@@ -5,7 +5,7 @@ import glob
 from dotenv import load_dotenv
 
 import utils.audio_processor
-from utils.audio_processor import process_input
+from utils.audio_processor import process_input, fetch_youtube_transcript
 from core.transcriber import transcribe_all
 from core.summarizer import summarize, generate_title
 from core.extractor import extract_action_items, extract_key_decisions, extract_questions
@@ -492,17 +492,30 @@ def execute_pipeline(source_path: str, lang: str):
     try:
         progress_box.info("Processing meeting pipeline — live steps are updating below...")
 
-        # 1. Audio
-        update_step("audio", "active")
-        chunks = process_input(source_path.strip())
-        update_step("audio", "done")
+        # 1 & 2. Try direct transcript extraction if YouTube URL (bypasses 403 Forbidden & heavy cloud CPU limits)
+        transcript = None
+        clean_source = source_path.strip()
+        if clean_source.startswith("http://") or clean_source.startswith("https://"):
+            progress_box.info("Retrieving YouTube transcript...")
+            direct_transcript = fetch_youtube_transcript(clean_source)
+            if direct_transcript:
+                update_step("audio", "done")
+                update_step("transcript", "done")
+                transcript = direct_transcript
 
-        # 2. Transcription
-        update_step("transcript", "active")
-        transcript = transcribe_all(chunks, lang)
-        if not transcript or not transcript.strip():
-            raise ValueError("Transcription completed but returned no spoken text. Please ensure the audio contains clear speech.")
-        update_step("transcript", "done")
+        # Fallback to local audio download, chunking & Whisper STT
+        if not transcript:
+            # 1. Audio
+            update_step("audio", "active")
+            chunks = process_input(clean_source)
+            update_step("audio", "done")
+
+            # 2. Transcription
+            update_step("transcript", "active")
+            transcript = transcribe_all(chunks, lang)
+            if not transcript or not transcript.strip():
+                raise ValueError("Transcription completed but returned no spoken text. Please ensure the audio contains clear speech.")
+            update_step("transcript", "done")
 
         # 3. Title
         update_step("title", "active")

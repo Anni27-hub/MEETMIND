@@ -3,6 +3,7 @@
 
 # ── Audio / Video acquisition ─────────────────────────────────────────────────
 yt-dlp[default]>=2024.8.1                   # Download audio from YouTube URLs
+youtube-transcript-api>=1.2.4        # Direct fast transcript retrieval from YouTube (bypasses 403 on cloud)
 pydub>=0.25.1                     # Audio file manipulation / format conversion
 ffmpeg-python>=0.2.0              # FFmpeg bindings (FFmpeg binary must be installed separately)
 

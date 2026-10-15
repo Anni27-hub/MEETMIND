@@ -3,9 +3,47 @@ from pydub import AudioSegment
 import os
 import glob
 import shutil
+import re
 
 DOWNLOAD_DIR = 'downloades'
-os.makedirs(DOWNLOAD_DIR,exist_ok = True)
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
+def extract_youtube_video_id(url: str) -> str:
+    patterns = [
+        r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',
+        r'(?:embed\/|shorts\/|v\/|live\/)([0-9A-Za-z_-]{11})',
+        r'^([0-9A-Za-z_-]{11})$'
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
+def fetch_youtube_transcript(url_or_id: str) -> str:
+    video_id = extract_youtube_video_id(url_or_id)
+    if not video_id:
+        return None
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        try:
+            api = YouTubeTranscriptApi()
+            transcript_list = api.fetch(video_id)
+        except AttributeError:
+            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+
+        text_pieces = []
+        for snippet in transcript_list:
+            if hasattr(snippet, 'text'):
+                text_pieces.append(snippet.text)
+            elif isinstance(snippet, dict) and 'text' in snippet:
+                text_pieces.append(snippet['text'])
+
+        full_text = ' '.join(text_pieces).strip()
+        return full_text if len(full_text) > 20 else None
+    except Exception as e:
+        print(f"Direct YouTube transcript unavailable: {e}")
+        return None
 
 def download_youtube_audio(url: str) -> str:
     output_path = os.path.join(DOWNLOAD_DIR, "%(id)s.%(ext)s")
@@ -19,10 +57,15 @@ def download_youtube_audio(url: str) -> str:
         js_runtimes["deno"] = {"path": shutil.which("deno")}
 
     ydl_opts = {
-        "format": "bestaudio[language*=en]/bestaudio[format_id*=en]/bestaudio/best",
+        "format": "bestaudio/best",
         "outtmpl": output_path,
         "windowsfilenames": True,
         "restrictfilenames": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "ios", "mweb"]
+            }
+        },
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
