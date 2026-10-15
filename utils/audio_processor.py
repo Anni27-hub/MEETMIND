@@ -1,17 +1,22 @@
 import yt_dlp
 from pydub import AudioSegment
 import os
+import glob
+import shutil
 
 DOWNLOAD_DIR = 'downloades'
 os.makedirs(DOWNLOAD_DIR,exist_ok = True)
 
 def download_youtube_audio(url: str) -> str:
-    output_path = os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s")
+    output_path = os.path.join(DOWNLOAD_DIR, "%(id)s.%(ext)s")
+    node_path = shutil.which("node") or r"C:\Program Files\nodejs\node.exe"
 
     ydl_opts = {
-        "format": "bestaudio/best",
+        "format": "bestaudio[language*=en]/bestaudio[format_id*=en]/bestaudio/best",
         "outtmpl": output_path,
-
+        "windowsfilenames": True,
+        "restrictfilenames": True,
+        "js_runtimes": {"node": {"path": node_path}} if os.path.exists(node_path) else ["node"],
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -19,16 +24,8 @@ def download_youtube_audio(url: str) -> str:
                 "preferredquality": "192",
             }
         ],
-
         "quiet": False,
         "no_warnings": False,
-
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["web_safari"]
-            }
-        },
-
         "http_headers": {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -41,12 +38,34 @@ def download_youtube_audio(url: str) -> str:
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
+        vid_id = info.get("id")
 
-        filename = (
-            ydl.prepare_filename(info)
-            .replace(".webm", ".wav")
-            .replace(".m4a", ".wav")
-        )
+        filename = None
+        if vid_id:
+            expected = os.path.join(DOWNLOAD_DIR, f"{vid_id}.wav")
+            if os.path.exists(expected) and os.path.getsize(expected) > 1000:
+                filename = expected
+
+        if not filename and "requested_downloads" in info and info["requested_downloads"]:
+            candidate = info["requested_downloads"][0].get("filepath")
+            if candidate and os.path.exists(candidate) and os.path.getsize(candidate) > 1000:
+                filename = candidate
+
+        if not filename or not os.path.exists(filename):
+            base_path = os.path.splitext(ydl.prepare_filename(info))[0]
+            for ext in [".wav", ".m4a", ".mp3", ".webm", ".mp4"]:
+                if os.path.exists(base_path + ext) and os.path.getsize(base_path + ext) > 1000:
+                    filename = base_path + ext
+                    break
+
+        if not filename or not os.path.exists(filename):
+            audio_files = glob.glob(os.path.join(DOWNLOAD_DIR, "*.wav"))
+            valid = [f for f in audio_files if os.path.getsize(f) > 1000]
+            if valid:
+                filename = max(valid, key=os.path.getmtime)
+
+    if not filename or not os.path.exists(filename) or os.path.getsize(filename) < 1000:
+        raise RuntimeError("Failed to download a valid audio file from YouTube.")
 
     return filename
 

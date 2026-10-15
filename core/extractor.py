@@ -4,8 +4,33 @@ import os
 
 
 def get_llm():
-    from langchain_mistralai import ChatMistralAI
-    return ChatMistralAI(model = "mistral-small-latest", mistral_api_key = os.getenv("MISTRAL_API_KEY"),temperature=0.2)
+    from langchain_openai import ChatOpenAI
+    groq_key = os.getenv("GROQ_API_KEY")
+    if groq_key:
+        return ChatOpenAI(
+            model=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"),
+            api_key=groq_key,
+            base_url="https://api.groq.com/openai/v1",
+            temperature=0.2,
+            max_retries=3,
+        )
+    if os.getenv("USE_OLLAMA", "").lower() == "true":
+        return ChatOpenAI(
+            model=os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b"),
+            api_key="ollama",
+            base_url="http://localhost:11434/v1",
+            temperature=0.2,
+        )
+    model_name = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    return ChatOpenAI(
+        model=model_name,
+        api_key=api_key,
+        base_url="https://openrouter.ai/api/v1",
+        temperature=0.2,
+        max_retries=3,
+        request_timeout=90,
+    )
 
 
 

@@ -18,6 +18,9 @@ def build_vector_store(transcript : str):
 
     print("Building vector Store")
 
+    if not transcript or not transcript.strip():
+        raise ValueError("Cannot index empty transcript into vector store. The audio did not produce any speech text.")
+
     splitter = RecursiveCharacterTextSplitter(
         chunk_size = 500,
         chunk_overlap = 50
@@ -28,6 +31,8 @@ def build_vector_store(transcript : str):
         Document(page_content=chunk, metadata = {'chunk_index' : i})
         for i,chunk in enumerate(chunks)
     ]
+    if not docs:
+        docs = [Document(page_content=transcript.strip(), metadata={'chunk_index': 0})]
 
     embeddings = get_embeddings()
     vector_store = Chroma.from_documents(

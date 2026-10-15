@@ -29,11 +29,16 @@ def load_model():
     return _model 
 
 
-def transcribe_chunk_whisper(chunk_path: str) -> str:
-
-    model = load_model()  
-
-    result = model.transcribe(chunk_path, task="transcribe")  
+def transcribe_chunk_whisper(chunk_path: str, language: str = "en") -> str:
+    model = load_model()
+    kwargs = {
+        "task": "transcribe",
+        "fp16": False,
+        "condition_on_previous_text": False,
+    }
+    if language:
+        kwargs["language"] = language
+    result = model.transcribe(chunk_path, **kwargs)
     return result["text"]  
 
 
@@ -100,7 +105,7 @@ def transcribe_chunk(chunk_path: str, language: str = "english") -> str:
     """
     if language.lower() == "hinglish":
         return transcribe_chunk_sarvam(chunk_path)
-    return transcribe_chunk_whisper(chunk_path)
+    return transcribe_chunk_whisper(chunk_path, language="en")
 
 
 def transcribe_all(chunks: list, language: str = "english") -> str:
