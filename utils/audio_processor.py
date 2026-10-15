@@ -26,14 +26,31 @@ def fetch_youtube_transcript(url_or_id: str) -> str:
         return None
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
+        data = None
         try:
-            api = YouTubeTranscriptApi()
-            transcript_list = api.fetch(video_id)
-        except AttributeError:
-            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+            transcript_list = YouTubeTranscriptApi().list(video_id)
+            try:
+                transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB', 'hi', 'hi-Latn'])
+                data = transcript.fetch()
+            except Exception:
+                # If specific language not found, take the first available transcript
+                for t in transcript_list:
+                    data = t.fetch()
+                    break
+        except Exception:
+            pass
+
+        if not data:
+            try:
+                data = YouTubeTranscriptApi().fetch(video_id)
+            except Exception:
+                data = YouTubeTranscriptApi.get_transcript(video_id)
+
+        if not data:
+            return None
 
         text_pieces = []
-        for snippet in transcript_list:
+        for snippet in data:
             if hasattr(snippet, 'text'):
                 text_pieces.append(snippet.text)
             elif isinstance(snippet, dict) and 'text' in snippet:
@@ -56,69 +73,74 @@ def download_youtube_audio(url: str) -> str:
     elif shutil.which("deno"):
         js_runtimes["deno"] = {"path": shutil.which("deno")}
 
-    ydl_opts = {
-        "format": "bestaudio/best",
-        "outtmpl": output_path,
-        "windowsfilenames": True,
-        "restrictfilenames": True,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android", "ios", "mweb"]
-            }
-        },
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "wav",
-                "preferredquality": "192",
-            }
-        ],
-        "quiet": False,
-        "no_warnings": False,
-        "http_headers": {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            ),
-            "Referer": "https://www.youtube.com/",
-        },
-    }
-    if js_runtimes:
-        ydl_opts["js_runtimes"] = js_runtimes
+    # Mobile clients to bypass 403 Forbidden datacenter bans on YouTube (without desktop header spoofing)
+    client_strategies = [
+        ["android", "ios"],
+        ["ios", "web_safari"],
+        ["tv_embedded"]
+    ]
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        vid_id = info.get("id")
+    last_error = None
+    for clients in client_strategies:
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "outtmpl": output_path,
+            "windowsfilenames": True,
+            "restrictfilenames": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": clients,
+                    "player_skip": ["webpage", "configs"]
+                }
+            },
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "wav",
+                    "preferredquality": "192",
+                }
+            ],
+            "quiet": True,
+            "no_warnings": True,
+        }
+        if js_runtimes:
+            ydl_opts["js_runtimes"] = js_runtimes
 
-        filename = None
-        if vid_id:
-            expected = os.path.join(DOWNLOAD_DIR, f"{vid_id}.wav")
-            if os.path.exists(expected) and os.path.getsize(expected) > 1000:
-                filename = expected
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                vid_id = info.get("id")
 
-        if not filename and "requested_downloads" in info and info["requested_downloads"]:
-            candidate = info["requested_downloads"][0].get("filepath")
-            if candidate and os.path.exists(candidate) and os.path.getsize(candidate) > 1000:
-                filename = candidate
+                filename = None
+                if vid_id:
+                    expected = os.path.join(DOWNLOAD_DIR, f"{vid_id}.wav")
+                    if os.path.exists(expected) and os.path.getsize(expected) > 1000:
+                        filename = expected
 
-        if not filename or not os.path.exists(filename):
-            base_path = os.path.splitext(ydl.prepare_filename(info))[0]
-            for ext in [".wav", ".m4a", ".mp3", ".webm", ".mp4"]:
-                if os.path.exists(base_path + ext) and os.path.getsize(base_path + ext) > 1000:
-                    filename = base_path + ext
-                    break
+                if not filename and "requested_downloads" in info and info["requested_downloads"]:
+                    candidate = info["requested_downloads"][0].get("filepath")
+                    if candidate and os.path.exists(candidate) and os.path.getsize(candidate) > 1000:
+                        filename = candidate
 
-        if not filename or not os.path.exists(filename):
-            audio_files = glob.glob(os.path.join(DOWNLOAD_DIR, "*.wav"))
-            valid = [f for f in audio_files if os.path.getsize(f) > 1000]
-            if valid:
-                filename = max(valid, key=os.path.getmtime)
+                if not filename or not os.path.exists(filename):
+                    base_path = os.path.splitext(ydl.prepare_filename(info))[0]
+                    for ext in [".wav", ".m4a", ".mp3", ".webm", ".mp4"]:
+                        if os.path.exists(base_path + ext) and os.path.getsize(base_path + ext) > 1000:
+                            filename = base_path + ext
+                            break
 
-    if not filename or not os.path.exists(filename) or os.path.getsize(filename) < 1000:
-        raise RuntimeError("Failed to download a valid audio file from YouTube.")
+                if filename and os.path.exists(filename) and os.path.getsize(filename) > 1000:
+                    return filename
+        except Exception as e:
+            last_error = e
+            continue
 
-    return filename
+    audio_files = glob.glob(os.path.join(DOWNLOAD_DIR, "*.wav"))
+    valid = [f for f in audio_files if os.path.getsize(f) > 1000]
+    if valid:
+        return max(valid, key=os.path.getmtime)
+
+    raise RuntimeError(f"Failed to download audio from YouTube. Error: {last_error}")
 
 
 #data = download_youtube_audio("https://www.youtube.com/watch?v=1FqcgtsWCbY")
